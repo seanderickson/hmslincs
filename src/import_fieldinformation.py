@@ -141,7 +141,9 @@ def main(path):
             logger.debug(str(('initializer: ', initializer)))
             #if((initializer['table'] == None and initializer['queryset'] == None ) or
             if(initializer['field'] == None):
-                logger.warn(str(('Note: table entry has no field definition (will be skipped)', initializer, 'current row:', actual_row)))
+                logger.warn(str((
+                    'Note: table entry has no field definition (will be skipped)', 
+                    initializer, 'current row:', actual_row)))
                 continue;
             lfi = FieldInformation(**initializer)
             # check if the table/field exists
@@ -149,14 +151,19 @@ def main(path):
                 table = models.get_model(APPNAME, lfi.table)
                 if( table != None):
                     if(lfi.field not in map(lambda x: x.name,table._meta.fields) ):
-                        raise Exception(str(('unknown field: ', lfi.field)))
+                        raise Exception(str(('unknown field: ', lfi.table, lfi.field)))
                 else:
                     raise Exception(str(('unknown table', lfi.table )))
             lfi.save()
             logger.info(str(('fieldInformation created:', lfi)))
             rows += 1
         except Exception, e:
-            logger.error(str(( "Invalid fieldInformation, initializer so far: ", initializer, 'current row:', actual_row,e)))
+            exc_type, exc_obj, exc_tb = sys.exc_info()
+            fname = os.path.split(exc_tb.tb_frame.f_code.co_filename)[1]      
+            msg = str(e)
+            logger.warn(str((msg, exc_type, fname, exc_tb.tb_lineno)))
+            logger.error(str(( "Invalid fieldInformation, initializer so far: ", 
+                initializer, 'current row:', actual_row,e)))
             raise e
         
     print "fieldInformation read: ", rows

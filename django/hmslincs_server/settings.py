@@ -6,6 +6,8 @@ _sqlite3dbpath = op.join(_djangopath, 'hmslincs.db')
 
 # Django settings for hmslincs_server project.
 
+PROJECT_ROOT = op.dirname(op.abspath(__file__))
+
 DEBUG = not op.abspath(__file__).startswith('/www/')
 TEMPLATE_DEBUG = DEBUG
 
@@ -272,7 +274,15 @@ LOGGING = {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
             'formatter': 'verbose'
-        }
+        },
+#         'logfile': {
+#             'level':'DEBUG',
+#             'class':'logging.handlers.RotatingFileHandler',
+#             'filename': op.join(PROJECT_ROOT, "..","..", "..", "logs", "lincs.log"),
+#             'maxBytes': 5000000,
+#             'backupCount': 2,
+#             'formatter': 'simple',
+#         },        
     },
     'loggers': {
         'django.request': {

@@ -421,74 +421,93 @@ class SmallMoleculeBatch(models.Model):
     
     facility_salt_batch = property(_get_facility_salt_batch)    
 
-class Cell(models.Model):
-    # ----------------------------------------------------------------------------------------------------------------------
-    #                                                                          EXAMPLE VALUES:
-    # ----------------------------------------------------------------------------------------------------------------------
-    facility_id                    = _CHAR(max_length=_FACILITY_ID_LENGTH, unique=True, **_NOTNULLSTR)
-    name                           = _CHAR(max_length=35, unique=True, **_NOTNULLSTR)    # 5637
-    cl_id                          = _CHAR(max_length=35, **_NULLOKSTR)     # CLO_0003703
-    alternate_name                 = _CHAR(max_length=35, **_NULLOKSTR)     # CaSki
-    alternate_id                   = _CHAR(max_length=50, **_NULLOKSTR)     # COSMIC:687452
-    center_name                    = _CHAR(max_length=20, **_NOTNULLSTR)    # HMS
-    center_specific_id             = _CHAR(max_length=15, **_NOTNULLSTR)    # HMSL50001
-    mgh_id                         = _CHAR(max_length=15, **_NULLOKSTR)     # 6
-    assay                          = _TEXT(**_NULLOKSTR)                    # Mitchison Mitosis-apoptosis Img; Mitchison 
-                                                                            # Prolif-Mitosis Img; Mitchison 2-3 color apo
-                                                                            # pt Img
-    provider_name                  = _CHAR(max_length=35, **_NOTNULLSTR)    # ATCC
-    provider_catalog_id            = _CHAR(max_length=35, **_NOTNULLSTR)    # HTB-9
-    batch_id                       = _CHAR(max_length=35, **_NULLOKSTR)     #
-    organism                       = _CHAR(max_length=35, **_NOTNULLSTR)    # Homo sapiens
-    organ                          = _CHAR(max_length=35, **_NOTNULLSTR)    # urinary bladder
-    tissue                         = _CHAR(max_length=35, **_NULLOKSTR)     #
-    cell_type                      = _CHAR(max_length=35, **_NULLOKSTR)     # epithelial
-    cell_type_detail               = _CHAR(max_length=35, **_NULLOKSTR)     # epithelial immortalized with hTERT
-    disease                        = _TEXT(**_NOTNULLSTR)                   # transitional cell carcinoma
-    disease_detail                 = _TEXT(**_NULLOKSTR)                    #
-    growth_properties              = _TEXT(**_NOTNULLSTR)                   # adherent
-    genetic_modification           = _CHAR(max_length=35, **_NULLOKSTR)     # none
-    related_projects               = _CHAR(max_length=35, **_NULLOKSTR)     #
-    recommended_culture_conditions = _TEXT(**_NULLOKSTR)                    # From MGH/CMT as specified by cell provider:
-                                                                               # RPMI 1640 medium with 2 mM L-glutamine adju
-                                                                               # sted to contain 1.5 g/L sodium bicarbonate,
-                                                                               #  4.5 g/L glucose, 10 mM HEPES, and 1.0 mM s
-                                                                               # odium pyruvate, 90%; fetal bovine serum, 10
-                                                                               # %. Protocol: Remove medium, and rinse with 
-                                                                               # 0.25% trypsin, 0.03% EDTA solution. Remove 
-                                                                               # the solution and add an additional 1 to 2 m
-                                                                               # l of trypsin-EDTA solution. Allow the flask
-                                                                               #  to sit at room temperature (or at 37C) unt
-                                                                               # il the cells detach. Add fresh culture medi
-                                                                               # um, aspirate and dispense into new culture 
-                                                                               # flasks.\012Subcultivation ratio: A subculti
-                                                                               # vation ratio of 1:4 to 1:8 is recommended
-                                                                               # \012\012
-    verification_profile           = _CHAR(max_length=35, **_NULLOKSTR)     #
-    verification_reference_profile = _TEXT(**_NULLOKSTR)                    # DNA Profile (STR, source: ATCC):\012Ameloge
-                                                                               # nin: X,Y \012CSF1PO: 11 \012D13S317: 11 \01
-                                                                               # 2D16S539: 9 \012D5S818: 11,12 \012D7S820: 1
-                                                                               # 0,11 \012THO1: 7,9 \012TPOX: 8,9 \012vWA: 1
-                                                                               # 6,18
-    mutations_reference            = _TEXT(**_NULLOKSTR)                    # http://www.sanger.ac.uk/perl/genetics/CGP/c
-                                                                               # ore_line_viewer?action=sample&id=687452
-    mutations_explicit             = _TEXT(**_NULLOKSTR)                    # Mutation data source: Sanger, Catalogue Of 
-                                                                               # Somatic Mutations In Cancer: Gene: RB1, \012
-                                                                               # AA mutation: p.Y325* (Substitution - Nonsen
-                                                                               # se), \012CDS mutation: c.975T>A (Substituti
-                                                                               # on); \012\012Gene: TP53, \012AA mutation: p
-                                                                               # .R280T (Substitution - Missense), \012CDS m
-                                                                               # utation: c.839G>C (Substitution)
-    organism_gender                = _CHAR(max_length=35, **_NULLOKSTR)     # male
-    date_data_received      = models.DateField(null=True,blank=True)
-    date_loaded             = models.DateField(null=True,blank=True)
-    date_publicly_available = models.DateField(null=True,blank=True)
-    date_updated            = models.DateField(null=True,blank=True)
-    is_restricted                     = models.BooleanField()
 
-    # ----------------------------------------------------------------------------------------------------------------------
+class Cell(models.Model):
+    facility_id = _CHAR(max_length=_FACILITY_ID_LENGTH, unique=True, **_NOTNULLSTR)
+    name = _CHAR(max_length=35, unique=True, **_NOTNULLSTR)
+    cl_id = _CHAR(max_length=35, **_NULLOKSTR)
+    alternate_name = _CHAR(max_length=35, **_NULLOKSTR)
+    alternate_id = _CHAR(max_length=50, **_NULLOKSTR)
+    center_name = _CHAR(max_length=20, **_NOTNULLSTR)
+    center_specific_id = _CHAR(max_length=15, **_NOTNULLSTR)
+    mgh_id = _CHAR(max_length=15, **_NULLOKSTR)
+    assay = _TEXT(**_NULLOKSTR) 
+    organism = _CHAR(max_length=35, **_NOTNULLSTR)  
+    organ = _CHAR(max_length=35, **_NOTNULLSTR)
+    tissue = _CHAR(max_length=35, **_NULLOKSTR)
+    cell_type = _CHAR(max_length=35, **_NULLOKSTR)
+    cell_type_detail = _CHAR(max_length=35, **_NULLOKSTR)
+    disease = _TEXT(**_NOTNULLSTR)
+    disease_detail = _TEXT(**_NULLOKSTR)
+    growth_properties = _TEXT(**_NOTNULLSTR)
+    genetic_modification = _CHAR(max_length=35, **_NULLOKSTR)
+    related_projects = _CHAR(max_length=35, **_NULLOKSTR)
+
+    # From MGH/CMT as specified by cell provider:
+    # RPMI 1640 medium with 2 mM L-glutamine adju
+    # sted to contain 1.5 g/L sodium bicarbonate,
+    #  4.5 g/L glucose, 10 mM HEPES, and 1.0 mM s
+    # odium pyruvate, 90%; fetal bovine serum, 10
+    # %. Protocol: Remove medium, and rinse with 
+    # 0.25% trypsin, 0.03% EDTA solution. Remove 
+    # the solution and add an additional 1 to 2 m
+    # l of trypsin-EDTA solution. Allow the flask
+    #  to sit at room temperature (or at 37C) unt
+    # il the cells detach. Add fresh culture medi
+    # um, aspirate and dispense into new culture 
+    # flasks.\012Subcultivation ratio: A subculti
+    # vation ratio of 1:4 to 1:8 is recommended
+    # \012\012
+    recommended_culture_conditions = _TEXT(**_NULLOKSTR)                    
+
+    # DNA Profile (STR, source: ATCC):\012Ameloge
+    # nin: X,Y \012CSF1PO: 11 \012D13S317: 11 \01
+    # 2D16S539: 9 \012D5S818: 11,12 \012D7S820: 1
+    # 0,11 \012THO1: 7,9 \012TPOX: 8,9 \012vWA: 1
+    # 6,18
+    verification_reference_profile = _TEXT(**_NULLOKSTR)
+    
+    # http://www.sanger.ac.uk/perl/genetics/CGP/c
+    # ore_line_viewer?action=sample&id=687452
+    mutations_reference = _TEXT(**_NULLOKSTR)                    
+
+    # Mutation data source: Sanger, Catalogue Of 
+    # Somatic Mutations In Cancer: Gene: RB1, \012
+    # AA mutation: p.Y325* (Substitution - Nonsen
+    # se), \012CDS mutation: c.975T>A (Substituti
+    # on); \012\012Gene: TP53, \012AA mutation: p
+    # .R280T (Substitution - Missense), \012CDS m
+    # utation: c.839G>C (Substitution)
+    mutations_explicit = _TEXT(**_NULLOKSTR)                    
+    
+    organism_gender = _CHAR(max_length=35, **_NULLOKSTR)     # male
+    date_data_received = models.DateField(null=True,blank=True)
+    date_loaded = models.DateField(null=True,blank=True)
+    date_publicly_available = models.DateField(null=True,blank=True)
+    date_updated = models.DateField(null=True,blank=True)
+    is_restricted = models.BooleanField()
+
     def __unicode__(self):
         return unicode(self.facility_id)
+
+
+class CellBatch(models.Model):
+    cell = models.ForeignKey('Cell')
+    batch_id = _CHAR(max_length=_BATCH_ID_LENGTH, **_NOTNULLSTR)
+    provider_name = _TEXT(**_NULLOKSTR)
+    provider_catalog_id = _CHAR(max_length=64, **_NULLOKSTR)
+    verification_profile = _TEXT(**_NULLOKSTR)
+
+    date_data_received = models.DateField(null=True,blank=True)
+    date_loaded = models.DateField(null=True,blank=True)
+    date_publicly_available = models.DateField(null=True,blank=True)
+    date_updated = models.DateField(null=True,blank=True)
+
+    def __unicode__(self):
+        return unicode(str((self.cell,self.batch_id)))
+    class Meta:
+        unique_together = ('cell', 'batch_id',)    
+
 
 class Protein(models.Model):
     name                = _TEXT(**_NOTNULLSTR)
@@ -689,8 +708,8 @@ class DataRecord(models.Model):
     dataset                 = models.ForeignKey('DataSet')
     smallmolecule           = models.ForeignKey('SmallMolecule', null=True)
     
-    # TODO: need a schema that provides proper indexes
-    batch_id                = _CHAR(max_length=_BATCH_ID_LENGTH, **_NULLOKSTR) # if given, denotes the batch associated with whichever entity is linked to this dataset through this recordd
+    sm_batch_id = _CHAR(max_length=_BATCH_ID_LENGTH, **_NULLOKSTR) 
+    cell_batch_id = _CHAR(max_length=_BATCH_ID_LENGTH, **_NULLOKSTR) 
     
     # NOTE: library_mapping: used in the case of control wells, if smallmolecule_batch is defined, then this must match the librarymapping to the smb
     library_mapping         = models.ForeignKey('LibraryMapping',null=True)  
@@ -702,7 +721,7 @@ class DataRecord(models.Model):
     well                    = _CHAR(max_length=4, **_NULLOKSTR) # AA99
     control_type            = _CHAR(max_length=35, **_NULLOKSTR) # TODO: controlled vocabulary
     def __unicode__(self):
-        return unicode(str((self.dataset,self.smallmolecule,self.cell,self.protein,self.batch_id,self.plate,self.well)))
+        return unicode(str((self.dataset,self.smallmolecule,self.cell,self.protein,self.sm_batch_id,self.plate,self.well)))
     
 class DataPoint(models.Model):
     datacolumn              = models.ForeignKey('DataColumn')

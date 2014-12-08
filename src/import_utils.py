@@ -26,7 +26,8 @@ def fill_in_column_definitions(properties, column_definitions):
             column_definitions_to_lower[key].setdefault(prop,None)
     return column_definitions_to_lower
     
-def find_columns(column_definitions, sheet_labels, all_column_definitions_required=True, all_sheet_columns_required=True):
+def find_columns(column_definitions, sheet_labels, 
+        all_column_definitions_required=True, all_sheet_columns_required=True):
     """
     return a dict mapping the column ordinal to the proper column definition dict
     - all matches are done after lowercasing the sheet labels.
