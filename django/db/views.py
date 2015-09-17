@@ -579,22 +579,17 @@ def smallMoleculeMolfile(request, facility_salt_id):
 def saltDetail(request, salt_id):
     logger.info(str(('find the salt', salt_id)))
     return smallMoleculeDetail(request, "%s-101" % salt_id )   
+
+def small_molecule_batch_redirect(request,facility_id,salt_id, batch_id):
+    return HttpResponseRedirect(reverse(
+        'db.views.smallMoleculeDetail',
+        kwargs={'facility_id':facility_id, 'salt_id': salt_id}) 
+            + '#batchinfo-%s' % batch_id)
     
 # TODO: let urls.py grep the facility and the salt    
-def smallMoleculeDetail(request, facility_salt_id): 
-    logger.info(str(('find the small molecule', facility_salt_id)))
-
+def smallMoleculeDetail(request, facility_id, salt_id): 
     try:
-        # TODO: let urls.py grep the facility and the salt
-        temp = facility_salt_id.split('-') 
-        logger.info(str(('find sm detail for', temp)))
-        facility_id = temp[0]
-        salt_id = temp[1]
         sm = SmallMolecule.objects.get(facility_id=facility_id, salt_id=salt_id) 
-        smb = None
-        if(len(temp)>2):
-            smb = SmallMoleculeBatch.objects.get(
-                reagent=sm,batch_id=temp[2]) 
 
         # extra_properties is a hack related to the restricted information:
         # it informs the system to grab these "hidden" properties
@@ -622,30 +617,28 @@ def smallMoleculeDetail(request, facility_salt_id):
             if(len(attachedFiles)>0):
                 details['attached_files'] = AttachedFileTable(attachedFiles)
             
-        # batch table
-        if not smb:
-            batches = SmallMoleculeBatch.objects.filter(reagent=sm,batch_id__gt=0)
-            if batches.exists():
-                details['batchTable']=SmallMoleculeBatchTable(batches)
-        else:
-            details['smallmolecule_batch']= get_detail(
-                smb,['smallmoleculebatch',''])
-            details['facility_salt_batch'] = '%s-%s-%s' % (sm.facility_id,sm.salt_id,smb.batch_id) 
-            # 20150413 - proposed "QC Outcome" field on batch info removed per group discussion
-            qcEvents = QCEvent.objects.filter(
-                facility_id_for=sm.facility_id,
-                salt_id_for=sm.salt_id,
-                batch_id_for=smb.batch_id).order_by('-date')
-            if qcEvents:
-                details['qcTable'] = QCEventTable(qcEvents)
-            
-            logger.info(str(('smb', details['smallmolecule_batch'])))
-            
-            if(not sm.is_restricted or request.user.is_authenticated()):
-                attachedFiles = get_attached_files(
-                    sm.facility_id,sm.salt_id,smb.batch_id)
-                if(len(attachedFiles)>0):
-                    details['attached_files_batch'] = AttachedFileTable(attachedFiles)        
+        batches = SmallMoleculeBatch.objects.filter(reagent=sm,batch_id__gt=0)
+        if batches.exists():
+            details['batchTable']=SmallMoleculeBatchTable(batches)
+            batchinfolist = []
+            for batch in batches:
+                batchinfo = { 'batch_id': batch.batch_id }
+                batchinfo['facility_salt_batch'] = ( 
+                    '%s-%s-%s' % (sm.facility_id,sm.salt_id,batch.batch_id))
+                batchinfo['detail'] = get_detail(batch,['smallmoleculebatch',''])
+                qcEvents = QCEvent.objects.filter(
+                    facility_id_for=sm.facility_id,
+                    salt_id_for=sm.salt_id,
+                    batch_id_for=batch.batch_id).order_by('-date')
+                if qcEvents:
+                    batchinfo['qcTable'] = QCEventTable(qcEvents)
+                if(not sm.is_restricted or request.user.is_authenticated()):
+                    attachedFiles = get_attached_files(
+                        sm.facility_id,sm.salt_id,batch.batch_id)
+                    if(len(attachedFiles)>0):
+                        batchinfo['attached_files_batch'] = AttachedFileTable(attachedFiles)        
+                batchinfolist.append(batchinfo)
+            details['batches'] = batchinfolist
         
         # datasets table
         datasets = DataSet.objects.filter(small_molecules__reagent=sm).distinct()
@@ -1385,13 +1378,17 @@ class LibraryMappingSearchManager(models.Model):
     
 class BatchInfoLinkColumn(tables.LinkColumn):
     
+    def render(self, value, record, bound_column):
+        link = super(BatchInfoLinkColumn,self).render(value,record,bound_column)
+        return mark_safe(link.format(batch_id=record.batch_id))
+        
     def render_link(self, uri, text, attrs=None):
         
-        return super(BatchInfoLinkColumn,self).render_link(uri + "#batchinfo",text,attrs)    
+        return super(BatchInfoLinkColumn,self).render_link(uri + "#batchinfo-{batch_id}",text,attrs)    
     
 class SmallMoleculeBatchTable(PagedTable):
     
-    facility_salt_batch = BatchInfoLinkColumn("sm_detail", args=[A('facility_salt_batch')])
+    facility_salt_batch = BatchInfoLinkColumn("sm_detail", args=[A('facility_id'),A('salt_id')])
     facility_salt_batch.attrs['td'] = {'nowrap': 'nowrap'}
     # qc_outcome = tables.Column()
     

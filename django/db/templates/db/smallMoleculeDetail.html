@@ -43,6 +43,11 @@
     <h2 class='entity_detail_title' title='Other proteins effected'>Other Targets:</h2>
     {% render_table other_targets_table %}
   {% endif %}
+  {% if batchTable %}
+    {% load render_table from django_tables2 %}
+    <h2 class='entity_detail_title'>Batch Information:</h2>
+    {% render_table batchTable %}
+  {% endif %}
   {% if datasets and not smallmolecule_batch %}
     {% load render_table from django_tables2 %}
     <h2 class='entity_detail_title'>Datasets:</h2>
@@ -57,25 +62,22 @@
       <img src="{% url restricted_image filepath=ambit_image_location %}" onclick="w=window.open('{% url restricted_image filepath=ambit_image_location %}','image','height=600,width=1200');w.moveTo(500,400);"/>
     {% endif %}
   {% endif %}
-  {% if batchTable %}
-    {% load render_table from django_tables2 %}
-    <h2 class='entity_detail_title'>Batch Information:</h2>
-    {% render_table batchTable %}
-  {% endif %}
-  {% if smallmolecule_batch %}
-    <a name='batchinfo'></a>
-    <h2 class='entity_detail_title'>Batch Information for HMSL{{ facility_salt_batch }}:</h2>
-    {% include "db/detailListing.html" with object=smallmolecule_batch %}
-    {% if qcTable %}
-      {% load render_table from django_tables2 %}
-      <h2 class='entity_detail_title'>HMS QC Testing Events for HMSL{{ facility_salt_batch }}:</h2>
-      {% render_table qcTable %}
-    {% endif %}
-    {% if attached_files_batch %}
-      <h2 class='entity_detail_title'>Attached Files for HMSL{{ facility_salt_batch }}:</h2>
-      {% load render_table from django_tables2 %}
-      {% render_table attached_files_batch %}
-    {% endif %}
+  {% if batches %}
+    {% for batchinfo in batches %}
+      <a name='batchinfo-{{ batchinfo.batch_id }}'></a>
+      <h2 class='entity_detail_title'>Batch Information for HMSL{{ batchinfo.facility_salt_batch }}:</h2>
+      {% include "db/detailListing.html" with object=batchinfo.detail %}
+      {% if batchinfo.qcTable %}
+        {% load render_table from django_tables2 %}
+        <h4 class='entity_detail_title'>HMS QC Testing Events:</h4>
+        {% render_table batchinfo.qcTable %}
+      {% endif %}
+      {% if attached_files_batch %}
+        <h2 class='entity_detail_title'>Attached Files for HMSL{{ batchinfo.facility_salt_batch }}:</h2>
+        {% load render_table from django_tables2 %}
+        {% render_table attached_files_batch %}
+      {% endif %}
+    {% endfor %}
   {% endif %}
   
 {% endblock %}

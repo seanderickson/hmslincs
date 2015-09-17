@@ -360,8 +360,11 @@ class Reagent(models.Model):
     @property
     def facility_salt(self):
         "Returns the 'facilty_id-salt_id'"
-        return '%s-%s' % (self.facility_id, self.salt_id)
-
+        if self.salt_id:
+            return '%s-%s' % (self.facility_id, self.salt_id)
+        else:
+            return self.facility_id
+        
     @property
     def unrestricted_facility_salt(self):
         "Returns the 'facilty_id-salt_id', only if unrestricted"
@@ -399,6 +402,14 @@ class ReagentBatch(models.Model):
     def facility_salt_batch(self):
         "Returns the 'facilty_id-salt_id'"
         return '%s-%s' % (self.reagent.facility_salt, self.batch_id)
+
+    @property
+    def facility_id(self):
+        return self.reagent.facility_id
+
+    @property
+    def salt_id(self):
+        return self.reagent.salt_id
 
     @classmethod
     def get_snippet_def(cls):
