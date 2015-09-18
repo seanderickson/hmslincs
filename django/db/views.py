@@ -657,8 +657,7 @@ def smallMoleculeDetail(request, facility_salt_id):
                 '''"isNominal" = '1' '''] 
             ntable = DataSetManager2(dataset).get_table(
                 metaWhereClause=metaWhereClause,
-                column_exclusion_overrides=[
-                    'smallMolecule_name','effectiveConcentration','isNominal'])
+                column_exclusion_overrides=['isNominal'])
             logger.info(str(('ntable',ntable.data, len(ntable.data))))
             
             if ntable.data: 
