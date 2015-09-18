@@ -150,20 +150,14 @@ def cellIndex(request):
     return render_list_index(request, table,search,'Cell','Cells',
         **{ 'extra_form': form, 'search_label': search_label })
 
-def cellDetail(request, facility_batch, batch_id=None):
+def cell_batch_redirect(request,facility_id,batch_id):
+    return HttpResponseRedirect(reverse(
+        'cell_detail',
+        kwargs={'facility_id': facility_id}) + '#batchinfo-%s' % batch_id)
+
+def cellDetail(request, facility_id):
     try:
-        _batch_id = None
-        if not batch_id:
-            temp = facility_batch.split('-') 
-            logger.info(str(('find cell for', temp)))
-            _facility_id = temp[0]
-            if len(temp) > 1:
-                _batch_id = temp[1]
-        else:
-            _facility_id = facility_batch
-            _batch_id = batch_id        
-        
-        cell = Cell.objects.get(facility_id=_facility_id) 
+        cell = Cell.objects.get(facility_id=facility_id) 
         if(cell.is_restricted and not request.user.is_authenticated()):
             return HttpResponse('Log in required.', status=401)
         details = {'object': get_detail(cell, ['cell',''])}
@@ -171,34 +165,28 @@ def cellDetail(request, facility_batch, batch_id=None):
         logger.info(str((details)))
         
         details['facility_id'] = cell.facility_id
-        cell_batch = None
-        if(_batch_id):
-            cell_batch = CellBatch.objects.get( 
-                reagent=cell, batch_id=_batch_id) 
+        batches = CellBatch.objects.filter(reagent=cell, batch_id__gt=0)
+        if batches.exists():
+            details['batchTable']=CellBatchTable(batches)
+            batchinfolist = []
+            for batch in batches:
+                batchinfo = { 'batch_id': batch.batch_id }
+                batchinfo['facility_batch'] = ( 
+                    '%s-%s' % (cell.facility_id,batch.batch_id))
+                batchinfo['detail'] = get_detail(batch,['cellbatch',''])
+                qcEvents = QCEvent.objects.filter(
+                    facility_id_for=cell.facility_id,
+                    batch_id_for=batch.batch_id).order_by('-date')
+                if qcEvents:
+                    batchinfo['qcTable'] = QCEventTable(qcEvents)
+                if(not cell.is_restricted or request.user.is_authenticated()):
+                    attachedFiles = get_attached_files(
+                        cell.facility_id,batch.batch_id)
+                    if(len(attachedFiles)>0):
+                        batchinfo['attached_files_batch'] = AttachedFileTable(attachedFiles)        
+                batchinfolist.append(batchinfo)
+            details['batches'] = batchinfolist
 
-        # batch table
-        if not cell_batch:
-            batches = CellBatch.objects.filter(reagent=cell, batch_id__gt=0)
-            if batches.exists():
-                details['batchTable']=CellBatchTable(batches)
-        else:
-            details['cell_batch']= get_detail(
-                cell_batch,['cellbatch',''])
-            details['facility_batch'] = '%s-%s' % (cell.facility_id,cell_batch.batch_id) 
-
-            # 20150413 - proposed "QC Outcome" field on batch info removed per group discussion
-            qcEvents = QCEvent.objects.filter(
-                facility_id_for=cell.facility_id,
-                batch_id_for=cell_batch.batch_id).order_by('-date')
-            if qcEvents:
-                details['qcTable'] = QCEventTable(qcEvents)
-            
-            if(not cell.is_restricted or request.user.is_authenticated()):
-                attachedFiles = get_attached_files(
-                    cell.facility_id,batch_id=cell_batch.batch_id)
-                if(len(attachedFiles)>0):
-                    details['attached_files_batch'] = AttachedFileTable(attachedFiles)        
-                
         datasets = DataSet.objects.filter(cells__reagent=cell).distinct()
         if(datasets.exists()):
             where = []
@@ -216,7 +204,6 @@ def cellDetail(request, facility_batch, batch_id=None):
                         'link': _LINK.format(cl_center_specific_id=cell.facility_id),
                         'value': cell.facility_id }
         details['extralink'] = extralink
-
         
         return render(request, 'db/cellDetail.html', details)
     except Cell.DoesNotExist:
@@ -332,21 +319,15 @@ def antibodyIndex(request):
         return send_to_file(outputType, 'antibodies', table, queryset, ['antibody',''] )
     RequestConfig(request, paginate={"per_page": 25}).configure(table)
     return render_list_index(request, table,search,'Antibody','Antibodies')
-   
-def antibodyDetail(request, facility_batch, batch_id=None):
+
+def antibody_batch_redirect(request,facility_id,batch_id):
+    return HttpResponseRedirect(reverse(
+        'antibody_detail',
+        kwargs={'facility_id': facility_id}) + '#batchinfo-%s' % batch_id)
+
+def antibodyDetail(request, facility_id):
     try:
-        _batch_id = None
-        if not batch_id:
-            temp = facility_batch.split('-') 
-            logger.info('find antibody for %s' % temp)
-            _facility_id = temp[0]
-            if len(temp) > 1:
-                _batch_id = temp[1]
-        else:
-            _facility_id = facility_batch
-            _batch_id = batch_id        
-        
-        antibody = Antibody.objects.get(facility_id=_facility_id) 
+        antibody = Antibody.objects.get(facility_id=facility_id) 
         if(antibody.is_restricted and not request.user.is_authenticated()):
             return HttpResponse('Log in required.', status=401)
         details = {'object': get_detail(antibody, ['antibody',''])}
@@ -359,31 +340,27 @@ def antibodyDetail(request, facility_batch, batch_id=None):
                 '/db/proteins/%s' % antibody.target_protein_center_id )
         
         details['facility_id'] = antibody.facility_id
-        antibody_batch = None
-        if(_batch_id):
-            antibody_batch = AntibodyBatch.objects.get(
-                reagent=antibody,batch_id=_batch_id) 
-
-        if not antibody_batch:
-            batches = AntibodyBatch.objects.filter(reagent=antibody, batch_id__gt=0)
-            if batches.exists():
-                details['batchTable']=AntibodyBatchTable(batches)
-        else:
-            details['antibody_batch']= get_detail(
-                antibody_batch,['antibodybatch',''])
-            details['facility_batch'] = '%s-%s' % (antibody.facility_id,antibody_batch.batch_id) 
-
-            qcEvents = QCEvent.objects.filter(
-                facility_id_for=antibody.facility_id,
-                batch_id_for=antibody_batch.batch_id).order_by('-date')
-            if qcEvents:
-                details['qcTable'] = QCEventTable(qcEvents)
-            
-            if(not antibody.is_restricted or request.user.is_authenticated()):
-                attachedFiles = get_attached_files(
-                    antibody.facility_id,batch_id=antibody_batch.batch_id)
-                if(len(attachedFiles)>0):
-                    details['attached_files_batch'] = AttachedFileTable(attachedFiles)        
+        batches = AntibodyBatch.objects.filter(reagent=antibody, batch_id__gt=0)
+        if batches.exists():
+            details['batchTable']=AntibodyBatchTable(batches)
+            batchinfolist = []
+            for batch in batches:
+                batchinfo = { 'batch_id': batch.batch_id }
+                batchinfo['facility_batch'] = ( 
+                    '%s-%s' % (antibody.facility_id,batch.batch_id))
+                batchinfo['detail'] = get_detail(batch,['antibodybatch',''])
+                qcEvents = QCEvent.objects.filter(
+                    facility_id_for=antibody.facility_id,
+                    batch_id_for=batch.batch_id).order_by('-date')
+                if qcEvents:
+                    batchinfo['qcTable'] = QCEventTable(qcEvents)
+                if(not antibody.is_restricted or request.user.is_authenticated()):
+                    attachedFiles = get_attached_files(
+                        antibody.facility_id,batch.batch_id)
+                    if(len(attachedFiles)>0):
+                        batchinfo['attached_files_batch'] = AttachedFileTable(attachedFiles)        
+                batchinfolist.append(batchinfo)
+            details['batches'] = batchinfolist
                 
         datasets = DataSet.objects.filter(antibodies__reagent=antibody).distinct()
         if(datasets.exists()):
@@ -580,15 +557,19 @@ def saltDetail(request, salt_id):
     logger.info(str(('find the salt', salt_id)))
     return smallMoleculeDetail(request, "%s-101" % salt_id )   
 
-def small_molecule_batch_redirect(request,facility_id,salt_id, batch_id):
+def small_molecule_batch_redirect(request,facility_salt_batch_id):
+    temp = facility_salt_batch_id.split('-')
     return HttpResponseRedirect(reverse(
         'db.views.smallMoleculeDetail',
-        kwargs={'facility_id':facility_id, 'salt_id': salt_id}) 
-            + '#batchinfo-%s' % batch_id)
+        kwargs={'facility_salt_id': '%s-%s' %(temp[0],temp[1])}) 
+            + '#batchinfo-%s' % temp[2])
     
 # TODO: let urls.py grep the facility and the salt    
-def smallMoleculeDetail(request, facility_id, salt_id): 
+def smallMoleculeDetail(request, facility_salt_id): 
     try:
+        temp = facility_salt_id.split('-')
+        facility_id = temp[0]
+        salt_id = temp[1]
         sm = SmallMolecule.objects.get(facility_id=facility_id, salt_id=salt_id) 
 
         # extra_properties is a hack related to the restricted information:
@@ -1377,20 +1358,20 @@ class LibraryMappingSearchManager(models.Model):
         return v
     
 class BatchInfoLinkColumn(tables.LinkColumn):
+
+    def render_link(self, uri, text, attrs=None):
+        return super(BatchInfoLinkColumn,self).render_link(
+            uri + "#batchinfo-{batch_id}",text,attrs)    
     
     def render(self, value, record, bound_column):
         link = super(BatchInfoLinkColumn,self).render(value,record,bound_column)
         return mark_safe(link.format(batch_id=record.batch_id))
         
-    def render_link(self, uri, text, attrs=None):
-        
-        return super(BatchInfoLinkColumn,self).render_link(uri + "#batchinfo-{batch_id}",text,attrs)    
-    
 class SmallMoleculeBatchTable(PagedTable):
     
-    facility_salt_batch = BatchInfoLinkColumn("sm_detail", args=[A('facility_id'),A('salt_id')])
+    facility_salt_batch = BatchInfoLinkColumn(
+        "sm_detail", args=[A('facility_salt')])
     facility_salt_batch.attrs['td'] = {'nowrap': 'nowrap'}
-    # qc_outcome = tables.Column()
     
     class Meta:
         model = SmallMoleculeBatch
@@ -1405,7 +1386,8 @@ class SmallMoleculeBatchTable(PagedTable):
 
 
 class CellBatchTable(PagedTable):
-    facility_batch = BatchInfoLinkColumn("cell_detail", args=[A('facility_batch')])
+    facility_batch = BatchInfoLinkColumn(
+        "cell_detail", args=[A('facility_id')])
     
     class Meta:
         model = CellBatch
@@ -1420,7 +1402,8 @@ class CellBatchTable(PagedTable):
 
 
 class AntibodyBatchTable(PagedTable):
-    facility_batch = BatchInfoLinkColumn("antibody_detail", args=[A('facility_batch')])
+    facility_batch = BatchInfoLinkColumn(
+        "antibody_detail", args=[A('facility_id')])
     
     class Meta:
         model = AntibodyBatch

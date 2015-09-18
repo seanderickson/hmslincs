@@ -404,12 +404,12 @@ class ReagentBatch(models.Model):
         return '%s-%s' % (self.reagent.facility_salt, self.batch_id)
 
     @property
-    def facility_id(self):
-        return self.reagent.facility_id
+    def facility_salt(self):
+        return self.reagent.facility_salt
 
     @property
-    def salt_id(self):
-        return self.reagent.salt_id
+    def facility_id(self):
+        return self.reagent.facility_id
 
     @classmethod
     def get_snippet_def(cls):

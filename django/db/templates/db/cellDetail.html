@@ -8,17 +8,11 @@
 {% include "db/detailTitle.html" with name=object.name type="Cell" id=object.facility_id %}
  {% include "db/detailListing.html" %}
 
-  {% if datasets and not cell_batch %}
+  {% if attached_files %}
+    <h2 class='entity_detail_title'>Attached Files</h2>
     {% load render_table from django_tables2 %}
-    <h2 class='entity_detail_title'>Datasets:</h2>
-    {% render_table datasets %}
+    {% render_table attached_files %}
   {% endif %}
-
-	{% if attached_files %}
-		<h2 class='entity_detail_title'>Attached Files</h2>
-		{% load render_table from django_tables2 %}
-		{% render_table attached_files %}
-	{% endif %}
 
   {% if batchTable %}
     {% load render_table from django_tables2 %}
@@ -26,20 +20,28 @@
     {% render_table batchTable %}
   {% endif %}
 
-  {% if cell_batch %}
-    <a name='batchinfo'></a>
-    <h2 class='entity_detail_title'>Batch Information for HMSL{{ facility_batch }}:</h2>
-    {% include "db/detailListing.html" with object=cell_batch %}
-    {% if qcTable %}
-      {% load render_table from django_tables2 %}
-      <h2 class='entity_detail_title'>HMS QC Testing Events for HMSL{{ facility_batch }}:</h2>
-      {% render_table qcTable %}
-    {% endif %}
-    {% if attached_files_batch %}
-      <h2 class='entity_detail_title'>Attached Files for HMSL{{ facility_batch }}:</h2>
-      {% load render_table from django_tables2 %}
-      {% render_table attached_files_batch %}
-    {% endif %}
+  {% if datasets and not cell_batch %}
+    {% load render_table from django_tables2 %}
+    <h2 class='entity_detail_title'>Datasets:</h2>
+    {% render_table datasets %}
+  {% endif %}
+
+  {% if batches %}
+    {% for batchinfo in batches %}
+      <a name='batchinfo-{{ batchinfo.batch_id }}'></a>
+      <h2 class='entity_detail_title'>Batch Information for HMSL{{ batchinfo.facility_salt_batch }}:</h2>
+      {% include "db/detailListing.html" with object=batchinfo.detail %}
+      {% if batchinfo.qcTable %}
+        {% load render_table from django_tables2 %}
+        <h4 class='entity_detail_title'>HMS QC Testing Events:</h4>
+        {% render_table batchinfo.qcTable %}
+      {% endif %}
+      {% if attached_files_batch %}
+        <h2 class='entity_detail_title'>Attached Files for HMSL{{ batchinfo.facility_salt_batch }}:</h2>
+        {% load render_table from django_tables2 %}
+        {% render_table attached_files_batch %}
+      {% endif %}
+    {% endfor %}
   {% endif %}
 
 {% endblock %}
