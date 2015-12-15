@@ -4,14 +4,14 @@
 
 {% block requirejs %}
     <script>
-    var QUALTRICS_SURVEY_ID = '{{ QUALTRICS_SURVEY_ID }}';
-     
     require.config({
         paths: {
             db: 'db/js',
         },
     });
-     require( [ 'db/main' ] );
+    require( [ 'jquery', 'db/main' ], function(jQuery, app){
+      jQuery(document).ready(app('{{ QUALTRICS_SURVEY_ID }}'));
+    });
     </script>
 {% endblock %}
 
