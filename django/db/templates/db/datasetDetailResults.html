@@ -27,6 +27,9 @@
         if(window.location.search &&
             ( window.location.search.indexOf('small') > -1
               || window.location.search.indexOf('cell') > -1
+              || window.location.search.indexOf('primary_cell') > -1
+              || window.location.search.indexOf('antibodies') > -1
+              || window.location.search.indexOf('other_reagents') > -1
               || window.location.search.indexOf('protein') > -1 )){
             form_toggle();
             var new_uri = clean_form_uri + window.location.search;

@@ -1235,7 +1235,7 @@ def datasetDetailResults(request, facility_id, template='db/datasetDetailResults
                 raise Http401
             manager = DataSetManager2(dataset)
             form = manager.get_result_set_data_form(request)
-            cursor = manager.get_cursor(facility_ids=form.get_search_facility_ids())
+            cursor = manager.get_cursor(facility_ids_by_datatype=form.get_search_facility_ids())
             datacolumns = \
                 DataColumn.objects.filter(dataset=dataset).order_by('display_order')
             return send_to_file1(
@@ -1426,14 +1426,15 @@ class ResultSetDataForm(forms.Form):
                 forms.MultipleChoiceField(required=False, choices=list_of_id_name_tuple)
 
     def get_search_facility_ids(self):
-        facility_ids = []
+        facility_ids_by_datatype = {}
         if self.is_valid():
-            for key in self.entity_id_name_map.keys():
+            for key,item in self.entity_id_name_map.items():
                 if key in self.fields:
                     vals = self.cleaned_data[key]
                     if(vals and len(vals) > 0):
-                        facility_ids.extend([str(val) for val in vals])
-        return facility_ids
+                        facility_ids_by_datatype[item['data_type']] = \
+                            [str(val) for val in vals]
+        return facility_ids_by_datatype
     
     
 class PaginationForm(forms.Form):
@@ -2907,7 +2908,7 @@ def datasetDetail2(request, facility_id, sub_page):
     if (sub_page == 'results'):
 
         form = manager.get_result_set_data_form(request)
-        table = manager.get_table(facility_ids=form.get_search_facility_ids()) 
+        table = manager.get_table(facility_ids_by_datatype=form.get_search_facility_ids()) 
         details['search_form'] = form
         if(len(table.data)>0):
             details['table'] = table
@@ -3119,36 +3120,42 @@ class DataSetManager2():
         entity_id_name_map = {}
         if self.dataset.cells.exists():
             entity_id_name_map['cells'] = { 
+                'data_type': 'cell',
                 'id_field': 'cell_id', 
                 'choices': [ ( item.reagent.facility_id, 
                     '%s:%s'% ( item.reagent.name,item.reagent.facility_id ) ) 
                     for item in self.dataset.cells.all() ] }
         if self.dataset.primary_cells.exists():
             entity_id_name_map['primary_cells'] = { 
+                'data_type': 'primary_cell',
                 'id_field': 'primarycell_id', 
                 'choices': [ ( item.reagent.facility_id, 
                     '%s:%s'% ( item.reagent.name,item.reagent.facility_id ) ) 
                     for item in self.dataset.primary_cells.all() ] }
         if self.dataset.proteins.exists():
             entity_id_name_map['proteins'] = { 
+                'data_type': 'protein',
                 'id_field': 'protein_id', 
                 'choices': [ ( item.reagent.facility_id, 
                     '%s:%s'% ( item.reagent.name,item.reagent.facility_id ) ) 
                     for item in self.dataset.proteins.all() ] }
         if self.dataset.small_molecules.exists():
             entity_id_name_map['small molecules'] = { 
+                'data_type': 'small_molecule',
                 'id_field': 'smallmolecule_id', 
                 'choices': [ ( item.reagent.facility_id, 
                     '%s:%s'% ( item.reagent.name,item.reagent.facility_id ) ) 
                     for item in self.dataset.small_molecules.all() ] }
         if self.dataset.antibodies.exists():
             entity_id_name_map['antibodies'] = { 
+                'data_type': 'antibody',
                 'id_field': 'antibody_id', 
                 'choices': [ ( item.reagent.facility_id, 
                     '%s:%s' % ( item.reagent.name,item.reagent.facility_id) ) 
                     for item in self.dataset.antibodies.all() ] }
         if self.dataset.other_reagents.exists():
             entity_id_name_map['other reagents'] = { 
+                'data_type': 'other_reagent',
                 'id_field': 'otherreagent_id', 
                 'choices': [ ( item.reagent.facility_id, 
                     '%s:%s' % ( item.reagent.name,item.reagent.facility_id ) )
@@ -3160,7 +3167,7 @@ class DataSetManager2():
         
     def get_cursor(
         self, whereClause=None, metaWhereClause=None,
-        column_exclusion_overrides=None, parameters=None, facility_ids=None): 
+        column_exclusion_overrides=None, parameters=None, facility_ids_by_datatype=None): 
         
         if not whereClause:
             whereClause = []
@@ -3175,7 +3182,7 @@ class DataSetManager2():
             % ( metaWhereClause, parameters ) )
         
         self.dataset_info = self._get_query_info(
-            whereClause, metaWhereClause, parameters, facility_ids)
+            whereClause, metaWhereClause, parameters, facility_ids_by_datatype)
         cursor = connection.cursor()
         logger.info('execute sql: %r, parameters: %s' 
             % ( self.dataset_info.query_sql, self.dataset_info.parameters) )
@@ -3184,7 +3191,7 @@ class DataSetManager2():
 
     def get_table(
         self, whereClause=None, metaWhereClause=None,
-        column_exclusion_overrides=None, parameters=None, facility_ids=None): 
+        column_exclusion_overrides=None, parameters=None, facility_ids_by_datatype=None): 
         
         if not whereClause:
             whereClause = []
@@ -3196,7 +3203,7 @@ class DataSetManager2():
             column_exclusion_overrides = []
             
         self.dataset_info = self._get_query_info(
-            whereClause, metaWhereClause, parameters, facility_ids)
+            whereClause, metaWhereClause, parameters, facility_ids_by_datatype)
         
         logger.debug('metaWhereClause: %r, parameters: %s' 
             % (metaWhereClause, self.dataset_info.parameters) )
@@ -3230,7 +3237,7 @@ class DataSetManager2():
                 % (self.datacolumns,self.query_sql,self.count_query_sql,self.parameters))
 
     def _get_query_info(self, whereClause=None,metaWhereClause=None, 
-                        parameters=None, facility_ids=None):
+                        parameters=None, facility_ids_by_datatype=None):
         """
         Create the dataset results sql query
         @param whereClause use this to filter datarecords in the inner query
@@ -3284,7 +3291,7 @@ class DataSetManager2():
             elif dc.data_type in ['small_molecule','cell','primary_cell',
                 'protein','antibody','other_reagent']:
                 column_to_select = "text_value"
-                reagent_key_columns.append(column_name)
+                reagent_key_columns.append((column_name,dc.data_type))
                 query_string += col_query_string.format( 
                     column_to_select=column_to_select, alias=alias,
                     column_name=column_name,dc_id=dc.id )
@@ -3309,16 +3316,22 @@ class DataSetManager2():
         query_string += " order by dr.id ) as " + inner_alias 
         logger.debug('whereClause: %s' % whereClause)      
         query_string += ' WHERE 1=1 '
-        if facility_ids:
+        if facility_ids_by_datatype:
             reagent_clauses = []
-            for col in reagent_key_columns:
-                col_reagent_clauses = []
-                for id in facility_ids:
-                    col_reagent_clauses.append(' "{key_col}" ~ %s '.format(key_col=col))
-                    parameters.append(id)
-                reagent_clauses.append(
-                    '( %s )' %  ' OR '.join(col_reagent_clauses))
-            metaWhereClause.append(' AND '.join(reagent_clauses))
+            for data_type,facility_ids in facility_ids_by_datatype.items():
+                data_type_clauses = []
+                for col,col_data_type in reagent_key_columns:
+                    if data_type == col_data_type:
+                        for facility_id in facility_ids:
+                            data_type_clauses.append(
+                                ' "{key_col}" ~ %s '.format(key_col=col))
+                            parameters.append(facility_id)
+                if data_type_clauses:
+                    reagent_clauses.append(
+                        '( %s )' %  ' OR '.join(data_type_clauses))
+            if reagent_clauses:
+                metaWhereClause.append(' AND '.join(reagent_clauses))
+        
         if whereClause:
             query_string = (" AND "+inner_alias+".").join([query_string]+whereClause) # extra filters
             countQueryString = " AND dr.".join([countQueryString]+whereClause) # extra filters
