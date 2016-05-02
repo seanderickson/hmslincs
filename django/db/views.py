@@ -430,26 +430,68 @@ def proteinIndex(request):
         request, table,search,'Protein','Proteins',
         **{ 'extra_form': form, 'search_label': search_label })
     
-def proteinDetail(request, lincs_id):
+def proteinDetail(request, facility_batch, batch_id=None):
     try:
-        protein = Protein.objects.get(lincs_id=lincs_id) # todo: cell here
+        _batch_id = None
+        if not batch_id:
+            temp = facility_batch.split('-') 
+            logger.info('find protein for %s' % temp)
+            _facility_id = temp[0]
+            if len(temp) > 1:
+                _batch_id = temp[1]
+        else:
+            _facility_id = facility_batch
+            _batch_id = batch_id        
+        
+        protein = Protein.objects.get(facility_id=_facility_id) 
         if(protein.is_restricted and not request.user.is_authenticated()):
             return HttpResponse('Log in required.', status=401)
         details = {'object': get_detail(protein, ['protein',''])}
         
+        details['facility_id'] = protein.facility_id
+        protein_batch = None
+        if(_batch_id):
+            protein_batch = ProteinBatch.objects.get(
+                reagent=protein,batch_id=_batch_id) 
+
+        if not protein_batch:
+            batches = ( ProteinBatch.objects
+                .filter(reagent=protein, batch_id__gt=0)
+                .order_by('batch_id') )
+            if batches.exists():
+                details['batchTable']=ProteinBatchTable(batches)
+        else:
+            details['protein_batch']= get_detail(
+                protein_batch,['proteinbatch',''])
+            details['facility_batch'] = ( '%s-%s' 
+                % (protein.facility_id,protein_batch.batch_id) ) 
+
+            qcEvents = QCEvent.objects.filter(
+                facility_id_for=protein.facility_id,
+                batch_id_for=protein_batch.batch_id).order_by('-date')
+            if qcEvents:
+                details['qcTable'] = QCEventTable(qcEvents)
+            
+            if(not protein.is_restricted or request.user.is_authenticated()):
+                attachedFiles = get_attached_files(
+                    protein.facility_id,batch_id=protein_batch.batch_id)
+                if(len(attachedFiles)>0):
+                    details['attached_files_batch'] = AttachedFileTable(attachedFiles)        
+                
         datasets = DataSet.objects.filter(proteins__reagent=protein).distinct()
         if(datasets.exists()):
             where = []
             if(not request.user.is_authenticated()): 
                 where.append("(not is_restricted or is_restricted is NULL)")
-            queryset = datasets.extra( where=where, order_by=('facility_id',))        
+            queryset = datasets.extra(
+                    where=where,
+                    order_by=('facility_id',))        
             details['datasets'] = DataSetTable(queryset)
 
         return render(request, 'db/proteinDetail.html', details)
- 
     except Protein.DoesNotExist:
         raise Http404
- 
+
 def antibodyIndex(request):
     search = request.GET.get('search','')
     search = re.sub(r'[\'"]','',search)
@@ -1668,6 +1710,21 @@ class OtherReagentBatchTable(PagedTable):
             self, ['otherreagent','otherreagentbatch',''],sequence_override)  
 
 
+class ProteinBatchTable(PagedTable):
+    facility_batch = BatchInfoLinkColumn("protein_detail", args=[A('facility_batch')])
+    
+    class Meta:
+        model = ProteinBatch
+        orderable = True
+        attrs = {'class': 'paleblue'}
+
+    def __init__(self, table, *args, **kwargs):
+        super(ProteinBatchTable, self).__init__(table, *args, **kwargs)
+        sequence_override = ['facility_batch']
+        set_table_column_info(
+            self, ['protein','proteinbatch',''],sequence_override)  
+    
+    
 class SaltTable(PagedTable):
     
     facility_id = tables.LinkColumn("salt_detail", args=[A('facility_id')])

@@ -184,10 +184,14 @@ then
   python src/import_libraries.py -f sampledata/sample_libraries.xls
   check_errs $? "import library fails"
 	    
-  echo 'import kinase tables...'
-  python src/import_protein.py -f sampledata/sample_proteins.xls
-  check_errs $? 'import kinases fails'
+  echo 'import protein tables...'
+  python src/import_protein.py -f sampledata/sample_proteins.xlsx
+  check_errs $? 'import proteins fails'
     
+  echo 'import protein batch tables...'
+  python src/import_protein_batch.py -f sampledata/sample_protein_batch.xlsx
+  check_errs $? "import protein batch fails"
+  
   echo 'import antibody tables...'
   python src/import_antibody.py -f sampledata/sample_antibodies.xlsx
   check_errs $? 'import antibodies fails'

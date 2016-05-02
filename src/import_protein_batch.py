@@ -1,9 +1,13 @@
+
+import sys
 import argparse
+import xls2py as x2p
+import re
+from datetime import date
 import logging
 
 import init_utils as iu
 import import_utils as util
-from db.models import Protein, ProteinBatch
 from django.db import transaction
 
 __version__ = "$Revision: 24d02504e664 $"
@@ -11,6 +15,7 @@ __version__ = "$Revision: 24d02504e664 $"
 # ---------------------------------------------------------------------------
 
 import setparams as _sg
+from db.models import Protein, ProteinBatch
 _params = dict(
     VERBOSE = False,
     APPNAME = 'db',
@@ -24,47 +29,39 @@ logger = logging.getLogger(__name__)
 
 @transaction.commit_on_success
 def main(path):
-    """
-    Read in the Protein
-    """
-
     sheet_name = 'Sheet1'
-    sheet = iu.readtable([path, sheet_name, 1]) 
+    start_row = 1
+    sheet = iu.readtable([path, sheet_name, start_row])
+
     properties = ('model_field','required','default','converter')
     column_definitions = { 
-            'PR_Center_Canonical_ID': 
-                ('facility_id',True,None,lambda x: x[x.index('HMSL')+4:]), 
-            'PR_Name': ('name',True), 
-            'PR_Alternative_Name': 'alternative_names',
-            'PR_LINCS_ID': 'lincs_id', 
-            'PR_PLN': 'pln',
-            'PR_UniProt_ID': 'uniprot_id', 
-            'PR_Mutations': 'mutations',
-            'PR_Modifications': 'modifications',
-            'PR_Protein_Complex_Details': 'complex_details',
-            'PR_Protein_Complex_Known_Component_UniProt_IDs': 
-                'complex_known_component_uniprot_ids',
-            'PR_Protein_Complex_Known_Component_LINCS_IDs':
-                'complex_known_component_lincs_ids',
-            'PR_Protein_Complex_Known_Component_Center_Protein_IDs':
-                'complex_known_component_facility_ids',
-            'PR_Protein_Complex_Stoichiometry':
-                'complex_stoichiometry',
-            'Date Data Received':('date_data_received',False,None,
-                                  util.date_converter),
-            'Date Loaded': ('date_loaded',False,None,util.date_converter),
-            'Date Publicly Available': ('date_publicly_available',False,None,
-                                        util.date_converter),
-            'Most Recent Update': ('date_updated',False,None,util.date_converter),
-            'Is Restricted':('is_restricted',False,False)}
-            
-    column_definitions = \
-        util.fill_in_column_definitions(properties,column_definitions)
+        'Facility ID':('facility_id',True,None, lambda x: x[x.index('HMSL')+4:]),
+        'PR_Center_Batch_ID':(
+            'batch_id',True,None, lambda x: util.convertdata(x,int)),
+        'PR_Provider_Name': ('provider_name',True),
+        'PR_Provider_Catalog_ID':'provider_catalog_id',
+        'PR_Provider_Batch_ID':'provider_batch_id',
+        'PR_Amino_Acid_Sequence':'amino_acid_sequence',
+        'PR_Production_Source_Organism':'production_source_organism',
+        'PR_Production_Method':'production_method',
+        'PR_Protein_Purity':'protein_purity',
+        'PR_Relevant_Citations':'relevant_citations',
+        'Date Data Received':(
+            'date_data_received',False,None,util.date_converter),
+        'Date Loaded': ('date_loaded',False,None,util.date_converter),
+        'Date Publicly Available': (
+            'date_publicly_available',False,None,util.date_converter),
+        'Most Recent Update': (
+            'date_updated',False,None,util.date_converter),
+        }
+    column_definitions = util.fill_in_column_definitions(
+        properties,column_definitions)
     
-    cols = util.find_columns(column_definitions, sheet.labels)
-
+    cols = util.find_columns(column_definitions, sheet.labels,
+        all_sheet_columns_required=False)
+    
     rows = 0    
-    logger.debug(str(('cols: ' , cols)))
+    logger.debug('cols: %s' % cols)
     for row in sheet:
         r = util.make_row(row)
         dict = {}
@@ -72,11 +69,14 @@ def main(path):
         for i,value in enumerate(r):
             if i not in cols: continue
             properties = cols[i]
+
+            logger.debug('read col: %d: %s' % (i,properties))
             required = properties['required']
             default = properties['default']
             converter = properties['converter']
             model_field = properties['model_field']
 
+            logger.debug('raw value %r' % value)
             if(converter != None):
                 value = converter(value)
             if(value == None ):
@@ -84,23 +84,32 @@ def main(path):
                     value = default
             if(value == None and  required == True):
                 raise Exception('Field is required: %s, record: %d' 
-                                    % (properties['column_label'],rows))
+                    % (properties['column_label'],rows))
+
+            logger.debug('model_field: %s, converted value %r'
+                % (model_field, value) )
             initializer[model_field] = value
         try:
-            protein = Protein(**initializer)
-            protein.lincs_id = protein.facility_id
-            protein.save()
+            logger.debug('initializer: %s' % initializer)
+            
+            facility_id = initializer.pop('facility_id',None)
+            try:
+                protein_reagent = Protein.objects.get(facility_id=facility_id)
+                initializer['reagent'] = protein_reagent
+            except ObjectDoesNotExist, e:
+                logger.error('facility_id: "%s" does not exist, row: %d' 
+                    % (facility_id,i))
+            batch = ProteinBatch(**initializer)
+            batch.save()
+            logger.debug('batch created: %s', batch)
             rows += 1
-            
-            # create a default batch - 0
-            ProteinBatch.objects.create(reagent=protein,batch_id=0)
-            
         except Exception, e:
-            logger.error(str(("Invalid protein initializer: ", initializer, e)))
+            logger.error("Invalid protein_reagent_batch initializer: %s" % initializer)
             raise
         
     print "Rows read: ", rows
     
+
 parser = argparse.ArgumentParser(description='Import file')
 parser.add_argument('-f', action='store', dest='inputFile',
                     metavar='FILE', required=True,
@@ -122,7 +131,6 @@ if __name__ == "__main__":
     logging.basicConfig(
         level=log_level, 
         format='%(msecs)d:%(module)s:%(lineno)d:%(levelname)s: %(message)s')        
-    logger.setLevel(log_level)
 
     print 'importing ', args.inputFile
     main(args.inputFile)

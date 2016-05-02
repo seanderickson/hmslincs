@@ -695,40 +695,36 @@ class PrimaryCellBatch(ReagentBatch):
     passage_number = models.IntegerField(null=True)
     date_received = models.TextField(null=True)
 
-    # TODO: test this for batch - update indexer
     @classmethod
     def get_snippet_def(cls):
         return FieldInformation.manager.get_snippet_def(cls)
     
-class Protein(Reagent):
-    
-    uniprot_id = _TEXT(**_NULLOKSTR) 
-    alternate_name_2 = _TEXT(**_NULLOKSTR)
-    provider            = _TEXT(**_NULLOKSTR)
-    provider_catalog_id = _TEXT(**_NULLOKSTR)
-    batch_id = _TEXT(**_NULLOKSTR)
-    amino_acid_sequence = _TEXT(**_NULLOKSTR)
-    gene_symbol = _TEXT(**_NULLOKSTR)
-    gene_id = _TEXT(**_NULLOKSTR)
-    protein_source = _TEXT(**_NULLOKSTR)
-    protein_form = _TEXT(**_NULLOKSTR) 
-    protein_domain = _TEXT(**_NULLOKSTR) 
-    phosphlorylation = _TEXT(**_NULLOKSTR) 
-    mutation = _TEXT(**_NULLOKSTR) 
-    protein_purity = _TEXT(**_NULLOKSTR)
-    protein_complex = _TEXT(**_NULLOKSTR)
-    isoform = _TEXT(**_NULLOKSTR) 
-    protein_type = _TEXT(**_NULLOKSTR)
-    source_organism = _TEXT(**_NULLOKSTR)
-    reference = _TEXT(**_NULLOKSTR)
 
+class Protein(Reagent):
+
+    pln = _TEXT(**_NULLOKSTR)    
+    uniprot_id = _TEXT(**_NULLOKSTR) 
+    mutations = _TEXT(**_NULLOKSTR) 
+    modifications = _TEXT(**_NULLOKSTR)
+    complex_details = _TEXT(**_NULLOKSTR)
+    complex_known_component_uniprot_ids = _TEXT(**_NULLOKSTR)
+    complex_known_component_lincs_ids = _TEXT(**_NULLOKSTR)
+    complex_known_component_facility_ids = _TEXT(**_NULLOKSTR)
+    complex_stoichiometry = _TEXT(**_NULLOKSTR)
+    
     @classmethod
     def get_snippet_def(cls):
         return FieldInformation.manager.get_snippet_def(cls)
+
 
 class ProteinBatch(ReagentBatch):
     
-    production_organism = models.TextField()
+    amino_acid_sequence = models.TextField()
+    production_source_organism = models.TextField()
+    production_method = models.TextField()
+    protein_purity = models.TextField()
+    relevant_citations = models.TextField()
+
 
 class Antibody(Reagent):
 
