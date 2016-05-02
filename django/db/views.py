@@ -3312,10 +3312,13 @@ class DataSetManager2():
         if facility_ids:
             reagent_clauses = []
             for col in reagent_key_columns:
+                col_reagent_clauses = []
                 for id in facility_ids:
-                    reagent_clauses.append(' "{key_col}" ~ %s '.format(key_col=col))
+                    col_reagent_clauses.append(' "{key_col}" ~ %s '.format(key_col=col))
                     parameters.append(id)
-            metaWhereClause.append(' OR '.join(reagent_clauses))
+                reagent_clauses.append(
+                    '( %s )' %  ' OR '.join(col_reagent_clauses))
+            metaWhereClause.append(' AND '.join(reagent_clauses))
         if whereClause:
             query_string = (" AND "+inner_alias+".").join([query_string]+whereClause) # extra filters
             countQueryString = " AND dr.".join([countQueryString]+whereClause) # extra filters
