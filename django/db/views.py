@@ -375,7 +375,7 @@ def proteinIndex(request):
         queryset = ProteinSearchManager().search(
             search, is_authenticated = request.user.is_authenticated())
     else:
-        queryset = Protein.objects.order_by('lincs_id')
+        queryset = Protein.objects.order_by('facility_id')
         if not request.user.is_authenticated(): 
             queryset = queryset.exclude(is_restricted=True)
 
@@ -1895,7 +1895,8 @@ class PrimaryCellTable(PagedTable):
             visible_field_overrides=visible_field_overrides)  
                         
 class ProteinTable(PagedTable):
-    lincs_id = tables.LinkColumn("protein_detail", args=[A('lincs_id')])
+    facility_id = tables.LinkColumn("protein_detail", args=[A('facility_id')])
+    # lincs_id = tables.LinkColumn("protein_detail", args=[A('lincs_id')])
     rank = tables.Column()
     snippet = DivWrappedColumn(verbose_name='matched text', classname='snippet')
     alternative_names = DivWrappedColumn(classname='constrained_width_column', visible=False)
@@ -1911,7 +1912,7 @@ class ProteinTable(PagedTable):
     
     def __init__(self, queryset, visible_field_overrides=[], *args, **kwargs):
         super(ProteinTable, self).__init__(queryset, *args, **kwargs)
-        sequence_override = ['lincs_id']    
+        sequence_override = []    
         set_table_column_info(self, ['protein',''],sequence_override, 
             visible_field_overrides=visible_field_overrides)  
                         
