@@ -44,9 +44,7 @@ def main(path):
         'AR_Clone_Name': 'clone_name',
         'AR_RRID': 'rrid',
         'AR_Antibody_Type': 'type',
-        'target_protein_lincs_id': (
-            'target_protein_lincs_id',False,None, 
-            lambda x: x[x.index('HMSL')+4:] if x else None ),
+        'target_protein_lincs_id': 'target_protein_lincs_id',
         'AR_Non-Protein_Target': 'non_protein_target_name',
         'AR_Target_Organism': 'target_organism',
         'AR_Immunogen': 'immunogen',

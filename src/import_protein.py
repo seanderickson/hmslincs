@@ -88,7 +88,6 @@ def main(path):
             initializer[model_field] = value
         try:
             protein = Protein(**initializer)
-            protein.lincs_id = protein.facility_id
             protein.save()
             rows += 1
             
