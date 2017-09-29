@@ -51,6 +51,7 @@ LOGFILE=${LOGFILE:-${PROGDIR:+"$PROGDIR/log"}}
 LOCKFILE=${LOCKFILE:-${PROGDIR:+"$PROGDIR/lock"}}
 ADMINDIR=${ADMINDIR:-${SUPPORTDIR:+"$($REALPATH $SUPPORTDIR/..)/docroot/admin/deploy"}}
 INFOFILE=
+WSGIFILE=${WSGIFILE:-${SUPPORTDIR:+"$SUPPORTDIR/wsgi/app.wsgi"}}
 
 UMASK=002
 
@@ -323,6 +324,13 @@ function _mkdir {
   fi
 }
 
+function touchwsgi {
+  if [[ -e $WSGIFILE ]]; then
+    touch $WSGIFILE
+    _debug "wsgi file: $WSGIFILE touched" 
+  fi
+}
+
 function _mkfile {
   if [[ ! -e $1 ]]; then
     (_mkdir $( dirname "$1" ) && umask $UMASK && touch "$1") \
@@ -376,7 +384,7 @@ deployed by $USER ($UID) connected from $ssh_client
 EOF
 
   maybe_activate_virtualenv
-  gitpull && runpip && builddb && collectstatic && killfcgi
+  gitpull && touchwsgi && runpip && builddb && collectstatic && killfcgi
 
   STATUS=$SUCCESS
   echo done
