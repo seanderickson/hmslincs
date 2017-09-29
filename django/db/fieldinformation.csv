@@ -333,7 +333,7 @@ antibody,lincs_id,,,TRUE,TRUE,,TRUE,6,5,FALSE,TRUE,AR:2,AR_LINCS_ID,"LINCS ID","
 antibody,type,,,TRUE,FALSE,,TRUE,7,7,TRUE,TRUE,AR:7,AR_Antibody_Type,Type,"Specification of antibody as natural or engineered",,,,,,,,,
 ,target_protein_names,,antibody,TRUE,FALSE,,TRUE,8,999,FALSE,TRUE,AR:8,AR_Target_Protein,"Nominal Protein Target(s)","Name(s) of the nominal protein target(s) based on the recommended name(s) from UniProt. If the target is not a protein, see information below.",,,,,,,,,
 ,target_protein_uniprot_ids,,antibody,FALSE,FALSE,,TRUE,9,9,FALSE,TRUE,AR:9,AR_Target_Protein_ID,"Nominal Protein Target UniProt ID(s)","UniProt ID(s) of the nominal protein target(s) of the antibody. If the target is not a protein, see information below.",,,,,,,,,
-,target_protein_center_ids_ui,,,FALSE,TRUE,,FALSE,8,8,FALSE,TRUE,AR:8a,AR_Target_Protein,"Nominal Protein Target HMS LINCS ID(s)","HMS LINCS ID(s) of the nominal protein target(s)",,,,,,,,,
+,target_protein_center_ids_ui,,antibody,FALSE,TRUE,,FALSE,8,8,FALSE,TRUE,AR:8a,AR_Target_Protein,"Nominal Protein Target HMS LINCS ID(s)","HMS LINCS ID(s) of the nominal protein target(s)",,,,,,,,,
 ,target_protein_center_ids,,antibody,TRUE,FALSE,,TRUE,10,10,FALSE,TRUE,AR:10,AR_Target_Protein_Center_ID,"Nominal Protein Target HMS LINCS ID(s)","HMS LINCS ID(s) of the nominal protein target(s)",,,,,,,,,
 ,target_protein_lincs_ids,,antibody,FALSE,FALSE,,TRUE,11,11,FALSE,TRUE,AR:11,AR_Target_Protein_LINCS_ID,"Nominal Protein Target LINCS ID(s)","Protein target global LINCS ID(s)",,,,,,,,,
 ,other_human_target_protein_center_ids,,antibody,TRUE,FALSE,,FALSE,15,999,FALSE,TRUE,AR:15,,"Other Human Protein Target HMS LINCS ID(s)","HMS LINCS ID(s) of other known human protein target(s)",,,,,,,,,

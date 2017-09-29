@@ -1603,6 +1603,12 @@ def datasetDetailAntibodies(request, facility_id):
             def make_antibody(batch):
                 d = model_to_dict(batch)
                 d.update(model_to_dict(batch.reagent.antibody))
+                d['target_protein_uniprot_ids'] = '; '.join([
+                    p.uniprot_id for p 
+                        in batch.reagent.antibody.target_proteins.all() ])
+                d['target_protein_center_ids_ui'] = '; '.join([
+                    p.facility_id for p 
+                        in batch.reagent.antibody.target_proteins.all()])
                 d['facility_batch'] = batch.facility_batch
                 return d
             queryset = [make_antibody(batch) for batch in queryset]
@@ -1611,6 +1617,7 @@ def datasetDetailAntibodies(request, facility_id):
                 fieldinformation_tables=['antibody','antibodybatch',''],
                 extra_columns=[
                     'target_protein_center_ids_ui',
+                    'target_protein_uniprot_ids',
                     'other_human_target_protein_center_ids_ui'],
                 sequence_override=['facility_batch'])
             return send_to_file(
