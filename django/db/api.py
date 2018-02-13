@@ -1,14 +1,17 @@
 import StringIO
 from collections import OrderedDict
+from collections import defaultdict
 import csv
 import json
 import logging
+import os
 
-from collections import defaultdict
+from django.conf import settings
 from django.conf.urls.defaults import url
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import connection, DatabaseError
 from django.db.models import Q
+from django.db.models.sql.where import OR
 from django.http import Http404
 from django.utils.encoding import smart_str
 from tastypie.authorization import Authorization
@@ -17,16 +20,15 @@ from tastypie.resources import ModelResource, Resource
 from tastypie.serializers import Serializer
 from tastypie.utils.urls import trailing_slash
 
-from db.models import SmallMolecule, SmallMoleculeBatch, Cell,\
-    CellBatch, PrimaryCell, PrimaryCellBatch, DiffCell, DiffCellBatch,\
-    Ipsc, IpscBatch, Protein, ProteinBatch, Antibody, AntibodyBatch,\
-    OtherReagent, OtherReagentBatch, Unclassified, UnclassifiedBatch,\
-    Library, DataSet, DataRecord, DataColumn,\
-    FieldInformation, get_detail_bundle, get_fieldinformation,\
-    get_schema_fieldinformation,camel_case_dwg, get_listing,\
+from db.models import SmallMolecule, SmallMoleculeBatch, Cell, \
+    CellBatch, PrimaryCell, PrimaryCellBatch, DiffCell, DiffCellBatch, \
+    Ipsc, IpscBatch, Protein, ProteinBatch, Antibody, AntibodyBatch, \
+    OtherReagent, OtherReagentBatch, Unclassified, UnclassifiedBatch, \
+    Library, DataSet, DataRecord, DataColumn, \
+    FieldInformation, get_detail_bundle, get_fieldinformation, \
+    get_schema_fieldinformation, camel_case_dwg, get_listing, \
     get_detail_schema, get_detail
 from db.views import _get_raw_time_string
-from django.db.models.sql.where import OR
 
 
 try:
@@ -660,12 +662,104 @@ class DataSetResource2(ModelResource):
                         'reagent__facility_id', 'reagent__salt_id', 'batch_id')]
         }
         
-        if bundle.obj.properties.exists():
-            property_map = defaultdict(list)
-            for property in bundle.obj.properties.all().order_by('type','ordinal'):
-                property_map[property.type].append((property.name, property.value))
-            bundle.data['experimental_metadata'] = property_map
+        def build_image_properties(all_properties):
+            ''' 
+            Find all the Imaging properties, as defined in the schema, and 
+            parse these into the Imaging data structure. 
+            
+            @return the imaging data structure, and the non-imaging properties
+            '''
+
+            # Read in the Imaging Schema
+            imaging_schema = None
+            filepath = os.path.join(
+                settings.PROJECT_ROOT,'..','db','Iccbl_Imaging_Schema_v0.1.json')
+            with open(filepath) as imaging_schema_file:
+                imaging_schema = json.loads(imaging_schema_file.read())
+    
+            def find_in_image_schema(property, schema):
+                ''' Recursively generate the path to terms in the Imaging Schema
+                '''
+                result = []
+    
+                if 'name' in schema:
+                    result.append(schema['name'])
+                for key, hash in schema.items():
+                    if key == 'properties':
+                        if property in hash:
+                            result.append(property)
+                            return result
+                        else:
+                            for key, item in hash.items():
+                                temp = find_in_image_schema(property, item)
+                                if temp:
+                                    result.append(key)
+                                    result.extend(temp)
+                                    return result
+                    elif key == 'items':
+                        for item in hash:
+                            temp = find_in_image_schema(property, item)
+                            if temp:
+                                result.extend(temp,)
+                                return result
+                    elif key == property:
+                        result.append(property)
+                        return result
+                return None
+            
+            # Construct an output data structure that conforms to the schema
+            image_props = defaultdict(OrderedDict)
+            acq_groups = []
+            image_props['Detection_Rounds'] = acq_groups
+            acq_group = None
+            image_channel = None
+            
+            non_imaging_properties = []
+            for property in all_properties:
+                # Detect the flattened Imaging Detection and Channel groups
+                if property.name == 'Imaging_Detection_Round_Start':
+                    acq_group = {'Imaging_Channels': []}
+                    acq_groups.append(acq_group)
+                if property.name == 'Imaging_Channel_Start':
+                    image_channel = {}
+                    acq_groups[-1]['Imaging_Channels'].append(image_channel)
+                if property.name in [
+                    'Imaging_Detection_Round_Start',
+                    'Imaging_Detection_Round_End',
+                    'Imaging_Channel_Start','Imaging_Channel_End']:
+                    continue
+                # Use the Imaging Schema to find the terms
+                result = find_in_image_schema(property.name, imaging_schema)
+                if result:
+                    if len(result) == 2:
+                            image_props[result[0]][result[1]] = property.value
+                    elif len(result) == 1:
+                        image_props[property.name] = property.value
+                    elif 'Detection_Rounds' in result:
+                        if 'Imaging_Channels' in result:
+                            image_channel[property.name] = property.value
+                        else:
+                            acq_group[property.name] = property.value
+                    else:
+                        # NOTE: nesting > 2 not supported for imaging props
+                        logger.warn('Imaging Property not recognized: %r', result)
+                        non_imaging_properties.append(property)
+                else:
+                    non_imaging_properties.append(property)
+            return (image_props, non_imaging_properties)
         
+        if bundle.obj.properties.exists():
+            
+            all_properties = [ property for property in 
+                bundle.obj.properties.all().order_by('type','ordinal')]
+            property_map = defaultdict(OrderedDict)
+            (image_props, non_imaging_properties) = build_image_properties(all_properties)
+            property_map['Imaging'] = image_props
+            for property in non_imaging_properties:
+                property_map[property.type][property.name] = property.value
+
+            bundle.data['experimental_metadata'] = property_map
+                
         return bundle
     
     def build_schema(self):
