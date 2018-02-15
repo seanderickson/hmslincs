@@ -710,22 +710,22 @@ class DataSetResource2(ModelResource):
             # Construct an output data structure that conforms to the schema
             image_props = defaultdict(OrderedDict)
             acq_groups = []
-            image_props['Detection_Rounds'] = acq_groups
+            image_props['Acquisition_Groups'] = acq_groups
             acq_group = None
             image_channel = None
             
             non_imaging_properties = []
             for property in all_properties:
                 # Detect the flattened Imaging Detection and Channel groups
-                if property.name == 'Imaging_Detection_Round_Start':
+                if property.name == 'Imaging_Acquisition_Group_Start':
                     acq_group = {'Imaging_Channels': []}
                     acq_groups.append(acq_group)
                 if property.name == 'Imaging_Channel_Start':
                     image_channel = {}
                     acq_groups[-1]['Imaging_Channels'].append(image_channel)
                 if property.name in [
-                    'Imaging_Detection_Round_Start',
-                    'Imaging_Detection_Round_End',
+                    'Imaging_Acquisition_Group_Start',
+                    'Imaging_Acquisition_Group_End',
                     'Imaging_Channel_Start','Imaging_Channel_End']:
                     continue
                 # Use the Imaging Schema to find the terms
@@ -735,7 +735,7 @@ class DataSetResource2(ModelResource):
                             image_props[result[0]][result[1]] = property.value
                     elif len(result) == 1:
                         image_props[property.name] = property.value
-                    elif 'Detection_Rounds' in result:
+                    elif 'Acquisition_Groups' in result:
                         if 'Imaging_Channels' in result:
                             image_channel[property.name] = property.value
                         else:
@@ -753,7 +753,8 @@ class DataSetResource2(ModelResource):
             all_properties = [ property for property in 
                 bundle.obj.properties.all().order_by('type','ordinal')]
             property_map = defaultdict(OrderedDict)
-            (image_props, non_imaging_properties) = build_image_properties(all_properties)
+            (image_props, non_imaging_properties) = \
+                build_image_properties(all_properties)
             property_map['Imaging'] = image_props
             for property in non_imaging_properties:
                 property_map[property.type][property.name] = property.value
