@@ -19,6 +19,7 @@ from tastypie.constants import ALL
 from tastypie.resources import ModelResource, Resource
 from tastypie.serializers import Serializer
 from tastypie.utils.urls import trailing_slash
+from django.utils import timezone
 
 from db.models import SmallMolecule, SmallMoleculeBatch, Cell, \
     CellBatch, PrimaryCell, PrimaryCellBatch, DiffCell, DiffCellBatch, \
@@ -28,22 +29,26 @@ from db.models import SmallMolecule, SmallMoleculeBatch, Cell, \
     FieldInformation, get_detail_bundle, get_fieldinformation, \
     get_schema_fieldinformation, camel_case_dwg, get_listing, \
     get_detail_schema, get_detail
-from db.views import _get_raw_time_string
-
-
-try:
-    from db import views
-except DatabaseError, e:
-    if not 'no such table: db_fieldinformation' in str(e):
-        raise
-    else:
-        import os
-        if os.environ.get('HMSLINCS_DEV', 'false') != 'true':
-            raise
+# from db.views import _get_raw_time_string
+# 
+# 
+# try:
+#     from db import views
+# except DatabaseError, e:
+#     if not 'no such table: db_fieldinformation' in str(e):
+#         raise
+#     else:
+#         import os
+#         if os.environ.get('HMSLINCS_DEV', 'false') != 'true':
+#             raise
 
 
         
 logger = logging.getLogger(__name__)
+
+def _get_raw_time_string():
+  return timezone.now().strftime("%Y%m%d%H%M%S")
+
 
 
 class SmallMoleculeResource(ModelResource):
@@ -662,6 +667,16 @@ class DataSetResource2(ModelResource):
                         'reagent__facility_id', 'reagent__salt_id', 'batch_id')]
         }
         
+        if bundle.obj.properties.exists():
+            bundle.data['experimental_metadata'] = self.build_metadata(bundle.obj)
+                
+        return bundle
+
+    def build_metadata(self, dataset):
+        ''' Build a JSON representation of the metadata properties
+        '''
+        property_map = defaultdict(OrderedDict)
+
         def build_image_properties(all_properties):
             ''' 
             Find all the Imaging properties, as defined in the schema, and 
@@ -715,13 +730,19 @@ class DataSetResource2(ModelResource):
             image_channel = None
             
             non_imaging_properties = []
+            
             for property in all_properties:
                 # Detect the flattened Imaging Detection and Channel groups
                 if property.name == 'Imaging_Acquisition_Group_Start':
-                    acq_group = {'Imaging_Channels': []}
+                    acq_group = OrderedDict((
+                        ('Imaging_Acquisition_Group', len(acq_groups)+1),
+                        ('Imaging_Channels', [])
+                    ))
                     acq_groups.append(acq_group)
                 if property.name == 'Imaging_Channel_Start':
-                    image_channel = {}
+                    image_channel = OrderedDict((
+                        ('Imaging_Channel', len(acq_groups[-1]['Imaging_Channels'])+1),
+                    ))
                     acq_groups[-1]['Imaging_Channels'].append(image_channel)
                 if property.name in [
                     'Imaging_Acquisition_Group_Start',
@@ -747,22 +768,18 @@ class DataSetResource2(ModelResource):
                 else:
                     non_imaging_properties.append(property)
             return (image_props, non_imaging_properties)
-        
-        if bundle.obj.properties.exists():
-            
-            all_properties = [ property for property in 
-                bundle.obj.properties.all().order_by('type','ordinal')]
-            property_map = defaultdict(OrderedDict)
-            (image_props, non_imaging_properties) = \
-                build_image_properties(all_properties)
-            property_map['Imaging'] = image_props
-            for property in non_imaging_properties:
-                property_map[property.type][property.name] = property.value
 
-            bundle.data['experimental_metadata'] = property_map
-                
-        return bundle
-    
+        
+        all_properties = [ property for property in 
+            dataset.properties.all().order_by('type','ordinal')]
+        (image_props, non_imaging_properties) = \
+            build_image_properties(all_properties)
+        property_map['Imaging'] = image_props
+        for property in non_imaging_properties:
+            property_map[property.type][property.name] = property.value
+        
+        return property_map
+        
     def build_schema(self):
         
         fields = get_detail_schema(

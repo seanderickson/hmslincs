@@ -51,6 +51,7 @@ from db.models import PubchemRequest, SmallMolecule, SmallMoleculeBatch, Cell, \
     Ipsc, IpscBatch, Unclassified, UnclassifiedBatch
 from django_tables2.utils import AttributeDict
 from tempfile import SpooledTemporaryFile
+from db.api import DataSetResource2, _get_raw_time_string
 
 
 logger = logging.getLogger(__name__)
@@ -1781,9 +1782,9 @@ def datasetDetailMetadata(request, facility_id):
         except DataSet.DoesNotExist:
             raise Http404
     try:
-        details = datasetDetail2(request,facility_id,'metadata')
+        details = datasetDetail2(request,facility_id,'metadata2')
         details.setdefault('heading', 'Experimental Metadata')
-        return render(request,'db/datasetDetailProperties.html', details)
+        return render(request,'db/datasetDetailPropertiesJson.html', details)
     except Http401, e:
         return HttpResponse('Unauthorized', status=401)
 
@@ -3618,8 +3619,8 @@ def _download_file(request, file_obj):
         logger.warn(msg)
         raise Http404(msg)
 
-def _get_raw_time_string():
-  return timezone.now().strftime("%Y%m%d%H%M%S")
+# def _get_raw_time_string():
+#   return timezone.now().strftime("%Y%m%d%H%M%S")
 
 def send_to_file1(outputType, name, table_name, ordered_datacolumns, cursor, 
                   is_authenticated=False):
@@ -4136,24 +4137,31 @@ def datasetDetail2(request, facility_id, sub_page):
             _dict = {}
             logger.info('property: %r, %r, %r',
                 property.type, property.name, property.value)
-            type = property.type
+            _type = property.type
             name = property.name.replace('_',' ')
-            name = name.lower().replace(type.lower(),'')
+            name = name.lower().replace(_type.lower(),'')
             name = name.title()
             _dict['fieldinformation'] = { 
                 'get_column_detail': property.name,
                 'get_verbose_name': name 
             }
             _dict['value'] = property.value
-            if type in propertyListing:
-                properties = propertyListing[type]
+            if _type in propertyListing:
+                properties = propertyListing[_type]
             else:
                 properties = OrderedDict()
-                propertyListing[type] = properties
+                propertyListing[_type] = properties
             properties[property.ordinal] = _dict
         
         details['propertyListing'] = propertyListing
+    elif sub_page == 'metadata2':
         
+        property_map = DataSetResource2().build_metadata(dataset)
+        
+        prop_string = json.dumps(property_map, sort_keys=False, indent=2)
+        
+        prop_string = re.sub(r'[{},"\[\]]','',prop_string)
+        details['jsonProperties'] = prop_string
     elif sub_page != 'main':
         raise Exception(str(('Unknown sub_page for datasedetail', sub_page)))
     
