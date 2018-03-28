@@ -679,8 +679,8 @@ class DataSetResource2(ModelResource):
 
         def build_image_properties(all_properties):
             ''' 
-            Find all the Imaging properties, as defined in the schema, and 
-            parse these into the Imaging data structure. 
+            Map the flattened imaging properties to a hierarchical data 
+            structure defined by the imaging schema given.
             
             @return the imaging data structure, and the non-imaging properties
             '''
@@ -691,9 +691,10 @@ class DataSetResource2(ModelResource):
                 settings.PROJECT_ROOT,'..','db','Iccbl_Imaging_Schema_v0.1.json')
             with open(filepath) as imaging_schema_file:
                 imaging_schema = json.loads(imaging_schema_file.read())
-    
+
             def find_in_image_schema(property, schema):
-                ''' Recursively generate the path to terms in the Imaging Schema
+                ''' 
+                Generate a path to map the property to terms in the Imaging Schema
                 '''
                 result = []
     
@@ -723,9 +724,8 @@ class DataSetResource2(ModelResource):
                 return None
             
             # Construct an output data structure that conforms to the schema
-            image_props = defaultdict(OrderedDict)
+            image_props = OrderedDict()
             acq_groups = []
-            image_props['Acquisition_Groups'] = acq_groups
             acq_group = None
             image_channel = None
             
@@ -736,10 +736,14 @@ class DataSetResource2(ModelResource):
                 if property.name == 'Imaging_Acquisition_Group_Start':
                     acq_group = OrderedDict((
                         ('Imaging_Acquisition_Group', len(acq_groups)+1),
-                        ('Imaging_Channels', [])
                     ))
                     acq_groups.append(acq_group)
+                    if 'Acquisition_Groups' not in image_props:
+                        image_props['Acquisition_Groups'] = acq_groups
+                    
                 if property.name == 'Imaging_Channel_Start':
+                    if 'Imaging_Channels' not in acq_groups[-1]:
+                        acq_groups[-1]['Imaging_Channels'] = []
                     image_channel = OrderedDict((
                         ('Imaging_Channel', len(acq_groups[-1]['Imaging_Channels'])+1),
                     ))
@@ -749,11 +753,13 @@ class DataSetResource2(ModelResource):
                     'Imaging_Acquisition_Group_End',
                     'Imaging_Channel_Start','Imaging_Channel_End']:
                     continue
-                # Use the Imaging Schema to find the terms
+                # Use the Imaging Schema to map terms to a data structure
                 result = find_in_image_schema(property.name, imaging_schema)
                 if result:
                     if len(result) == 2:
-                            image_props[result[0]][result[1]] = property.value
+                        if result[0] not in image_props:
+                            image_props[result[0]] = OrderedDict()
+                        image_props[result[0]][result[1]] = property.value
                     elif len(result) == 1:
                         image_props[property.name] = property.value
                     elif 'Acquisition_Groups' in result:

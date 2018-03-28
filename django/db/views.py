@@ -4155,12 +4155,14 @@ def datasetDetail2(request, facility_id, sub_page):
         
         details['propertyListing'] = propertyListing
     elif sub_page == 'metadata2':
-        
+        # Use the API to generate a JSON compatible mapping of the properties
         property_map = DataSetResource2().build_metadata(dataset)
-        
         prop_string = json.dumps(property_map, sort_keys=False, indent=2)
-        
+        # Do a minimalist conversion of the JSON structure to a indented list
         prop_string = re.sub(r'[{},"\[\]]','',prop_string)
+        # Remove empty lines in the indented list
+        prop_string = re.sub(r'^\s+\n','', prop_string, flags=re.MULTILINE )
+        # Send the indented list directly to the template
         details['jsonProperties'] = prop_string
     elif sub_page != 'main':
         raise Exception(str(('Unknown sub_page for datasedetail', sub_page)))
